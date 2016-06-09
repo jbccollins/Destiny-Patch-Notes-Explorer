@@ -1,0 +1,209 @@
+---
+output: pdf_document
+---
+Last updated: 3/29/15
+
+```{r, echo=FALSE}
+library(maps)
+library(mapproj)
+library(maptools)
+require(dplyr)
+library(randomForest)
+knitr::opts_chunk$set(cache=FALSE)
+knitr::opts_chunk$set(fig.width=12)
+```
+
+```{r}
+races <- list(
+                "All" = c(1,2,3,4,5,6,7,8,9), 
+                "White" = c(1), 
+                "Black" = c(2),
+                "American Indian" = c(3),
+                "Asian" = c(6),
+                "Pacific Islander" = c(7),
+                "Other" = c(8),
+                "Two or more races" = c(9)
+              )
+sexes <- list("All" = c(1,2), "Male" = c(1), "Female" = c(2))
+degree_types <- list(
+                      "All" = seq(0:24),
+                      "Bachelor's" = c(21), 
+                      "Master's" = c(22), 
+                      "Professional (Beyond Master's)" = c(23),
+                      "Doctorate" = c(24)
+                      )
+census_filter <- function(incomes, race, ages, degree, sex){
+  x <- md %>% filter(
+          WAGP >= incomes[1] & WAGP <= incomes[2] &
+          RAC1P %in% races[[race]] &
+          AGEP >= ages[1] & AGEP <= ages[2] & 
+          SCHL %in% degree_types[[degree]] &
+          SEX %in% sexes[[sex]]
+  )
+  return (x)
+}
+
+```
+
+```{r}
+# TESTING SHAPEFILE STUFF
+majors = read.csv("census-app/data/majors-list.csv")
+majors <- na.omit(majors)
+gor = readShapeSpatial('census-app/data/tl_2010_24_puma10/tl_2010_24_puma10.shp')
+md_12 = read.csv('census-app/data/ss12pmd_new.csv')
+md_13 = read.csv('census-app/data/ss13pmd_new.csv')
+
+md_12_data <- md_12 %>%
+  dplyr::filter(!is.na(AGEP) & !is.na(WAGP) & AGEP >= 16) %>%
+  dplyr::select( WAGP,
+                 FOD1P,
+                 SCHL,
+                 RAC1P,
+                 AGEP,
+                 PUMA,
+                 OCCP,
+                 SEX,
+                 COW,
+                 CIT,
+                 MAR)
+#dplyr::select(WAGP,OCCP,PUMA,FOD1P,AGEP,SEX,RAC1P,SCHL,ADJINC)
+
+md_12_data$YEAR <- rep(2012, length(md_12_data$WAGP))
+
+md_13_data <- md_13 %>%
+  dplyr::filter(!is.na(AGEP) & !is.na(WAGP) & AGEP >= 16) %>%
+  dplyr::select( WAGP,
+                 FOD1P,
+                 SCHL,
+                 RAC1P,
+                 AGEP,
+                 PUMA,
+                 OCCP,
+                 SEX,
+                 COW,
+                 CIT,
+                 MAR)
+#dplyr::select(WAGP,OCCP,PUMA,FOD1P,AGEP,SEX,RAC1P,SCHL,ADJINC)
+
+md_13_data$YEAR <- rep(2013, length(md_13_data$WAGP))
+
+md <- as.data.frame(rbind(as.matrix(md_12_data), as.matrix(md_13_data)))
+md[is.na(md)] <- 0
+#md$FOD1P[is.na(md$FOD1P)] <- 0
+#md$COW[is.na(md$COW)] <- 0
+#md$OCCP[is.na(md$OCCP)] <- 0
+
+gor@data$PUMACE10 <- as.integer(names(table(gor@data$PUMACE10)))
+```
+
+```{r}
+x <- census_filter(c(1000, 165000), "All", c(18, 54), "All", "All")
+x <- x %>% dplyr::select( WAGP,
+                 FOD1P,
+                 SCHL,
+                 RAC1P,
+                 AGEP,
+                 PUMA,
+                 OCCP,
+                 SEX,
+                 YEAR)
+x$WAGP <- log(x$WAGP)
+train=(x$YEAR==2012)
+train_x=x[train,]
+test_x=x[!train,]
+test_x_w = test_x$WAGP
+cl = train_x$WAGP
+test_x <- test_x[,-1]
+train_x <- train_x[,-1]
+knn.pred=knn(train_x, test_x, cl, k=50)
+
+mean((as.integer(as.character(exp(1)^knn.pred)) < exp(1)^test_x_w+5000) & 
+     (as.integer(as.character(exp(1)^knn.pred)) > exp(1)^test_x_w-5000))
+```
+
+```{r}
+buckets <- list("10"=c(0,13175), "15"=c(13176,52450), "25"=c(52451,119900), "28"=c(119901,474017), 
+                "33"=c(474018, 398350), "35"=c(398351, 425000), "36"=c(425000, 10000000))
+blah <- rep(NA, length(md$WAGP))
+counter = 1
+for(i in md$WAGP) {
+  if (i >= 0 & i <= 13175){
+    blah[counter] = 10
+  } else if (i >= 13176 & i <= 52450){
+    blah[counter] = 15
+  } else if (i >= 52451 & i <= 119900){
+    blah[counter] = 25
+  } else if (i >= 119901 & i <= 203150){
+    blah[counter] = 28
+  } else if(i >= 203151 & i <= 398150){
+    blah[counter] = 33
+  } else if(i >= 398351 & i <= 425000){
+    blah[counter] = 35
+  } else {
+    blah[counter] = 36
+  }
+  counter = counter + 1
+}
+md$TAX <- blah
+
+x <- census_filter(c(1000, 165000), "All", c(18, 54), "All", "All")
+x <- x %>% dplyr::select( 
+                   TAX,
+                 FOD1P,
+                 SCHL,
+                 RAC1P,
+                 AGEP,
+                 PUMA,
+                 OCCP,
+                 SEX,
+                 COW,
+                 CIT,
+                 YEAR)
+
+x <- na.omit(x)
+train=(x$YEAR==2012)
+train_x=x[train,]
+test_x=x[!train,]
+test_x_w = test_x$TAX
+cl = train_x$TAX
+test_x <- test_x[,-1]
+train_x <- train_x[,-1]
+knn.pred=knn(train_x, test_x, cl, k=3)
+
+mean((as.integer(as.character(knn.pred$pred)) == test_x_w))
+     
+plot(x$WAGP, x$AGEP)
+```
+
+Testing Linear Model
+```{r}
+    x <- census_filter(c(1000, 250000), "All", c(16, 100), "All", "All")
+    x <- na.omit(x)
+    train=(x$YEAR==2012)
+    train_x=x[train,]
+    test_x=x[!train,]
+    
+    #train_x_keep_occp = (train_x$OCCP %in% unique(test_x$OCCP))
+    train_x_keep_fod1p = (train_x$FOD1P %in% unique(test_x$FOD1P))
+    #train_x <- train_x[train_x_keep_occp & train_x_keep_fod1p,]
+    
+    #test_x_keep_occp = (test_x$OCCP %in% unique(train_x$OCCP))
+    test_x_keep_fod1p = (test_x$FOD1P %in% unique(train_x$FOD1P))
+    #test_x <- test_x[test_x_keep_occp & test_x_keep_fod1p,]
+    test_x <- test_x[test_x_keep_fod1p,]
+    x.fit <- lm(log(WAGP) ~ AGEP+
+                  as.factor(SCHL)+
+                  #as.factor(RAC1P)+
+                  as.factor(SEX),#+
+                  #as.factor(PUMA)+
+                  #as.factor(FOD1P)+
+                  #as.factor(OCCP)+
+                  #as.factor(MAR), 
+                  data=train_x)
+    x.pred <- predict(x.fit, test_x, type="response")
+
+    mean(x.pred < log(test_x$WAGP)+0.5 & x.pred > log(test_x$WAGP)-0.5)
+    mean(2.71^(x.pred) < test_x$WAGP+10000 & 2.71^(x.pred) > test_x$WAGP-10000)
+    summary(x.fit)
+````
+
