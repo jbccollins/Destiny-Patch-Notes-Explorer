@@ -3,6 +3,7 @@ source("helpers.R")
 # DataSet
 ds = read.csv('data/dataset.csv', na.strings=c(""), header=TRUE, stringsAsFactors=FALSE)
 ds[is.na(ds)] <- 'None'
+ds$Affects <- strsplit(ds$Affects, "/")
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(
   
@@ -62,12 +63,16 @@ shinyUI(fluidPage(
                 choices = getGearChoices(ds),
                 multiple = TRUE,
                 selected = getGearChoices(ds)
+    ),
+    selectInput("stats", 
+                label = "Affected Stats", 
+                choices = getAffectedStatChoices(ds),
+                multiple = TRUE,
+                selected = getAffectedStatChoices(ds)
     )),
     # Show a plot of the generated distribution
     mainPanel(
       tabsetPanel(
-        tabPanel("Histogram", 
-                 plotOutput("histPlot")),
         tabPanel("Timeline",
                  plotOutput("timePlot")),
         
