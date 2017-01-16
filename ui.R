@@ -1,9 +1,9 @@
 library(shiny)
 source("helpers.R")
 # DataSet
-ds = read.csv('data/dataset.csv', na.strings=c(""), header=TRUE, stringsAsFactors=FALSE)
+ds = read.csv('data/test-data.csv', na.strings=c(""), header=TRUE, stringsAsFactors=FALSE)
 ds[is.na(ds)] <- 'None'
-ds$Affects <- strsplit(ds$Affects, "/")
+ds$Tags <- strsplit(ds$Tags, "/")
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(
   
@@ -50,56 +50,50 @@ shinyUI(fluidPage(
                    "Unknown"
                  ),
                  multiple = TRUE,
-                 selected = c("Buff", "Nerf")
+                 selected = c("Buff", "Nerf", "Neutral", "Unknown")
     ),
-    selectInput("subclasses", 
-                label = "Affected Subclass", 
-                choices = getSubclassChoices(ds),
+    selectInput("subject", 
+                label = "Affected Subject", 
+                choices = getSubjectChoices(ds),
                 multiple = TRUE,
-                selected = getSubclassChoices(ds)
+                selected = getSubjectChoices(ds)
     ),
-    selectInput("gear", 
-                label = "Affected Gear", 
-                choices = getGearChoices(ds),
+    selectInput("tags", 
+                label = "Tags", 
+                choices = getTagChoices(ds),
                 multiple = TRUE,
-                selected = getGearChoices(ds)
-    ),
-    selectInput("stats", 
-                label = "Affected Stats", 
-                choices = getAffectedStatChoices(ds),
-                multiple = TRUE,
-                selected = getAffectedStatChoices(ds)
+                selected = getTagChoices(ds)
     )),
     # Show a plot of the generated distribution
     mainPanel(
+      fluidRow(
+        column(3,
+               tags$div(
+                 class = "checkbox-container",
+                 checkboxInput("tableIncludeExotics", "Include Exotics", value = TRUE)
+               )
+        ),
+        column(3,
+               tags$div(
+                 class = "button-container",
+                 downloadButton('downloadDataTable', 'Download This Subset')
+               )
+        ),
+        column(6,
+               tags$div(
+                 class = "quick-summary",
+                 textOutput("buffs", inline=TRUE),
+                 textOutput("nerfs", inline=TRUE),
+                 textOutput("neutral", inline=TRUE),
+                 textOutput("unknown", inline=TRUE)
+               )
+        )
+      ),
       tabsetPanel(
         tabPanel("Timeline",
                  plotOutput("timePlot")),
         
         tabPanel("Data Table",
-                 fluidRow(
-                   column(3,
-                          tags$div(
-                            class = "checkbox-container",
-                            checkboxInput("tableIncludeExotics", "Include Exotics", value = FALSE)
-                          )
-                   ),
-                   column(3,
-                          tags$div(
-                            class = "button-container",
-                            downloadButton('downloadDataTable', 'Download This Subset')
-                          )
-                   ),
-                   column(6,
-                      tags$div(
-                          class = "quick-summary",
-                          textOutput("buffs", inline=TRUE),
-                          textOutput("nerfs", inline=TRUE),
-                          textOutput("neutral", inline=TRUE),
-                          textOutput("unknown", inline=TRUE)
-                      )
-                   )
-                 ),
                  dataTableOutput("dataTable")
         ),
                  

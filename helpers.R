@@ -1,22 +1,19 @@
 require(dplyr)
-getSubclassChoices <- function(ds){
-  unique(ds$Subclass)
-}
 
-getGearChoices <- function(ds){
-  unique(ds$Gear)
+getSubjectChoices <- function(ds){
+  sort(unique(ds$Subject))
 }
 
 getResultChoices <- function(ds){
-  unique(ds$Result)
+  sort(unique(ds$Result))
 }
 
-getAffectedStatChoices <- function(ds){
+getTagChoices <- function(ds){
   choices = c()
   # TODO: There has got to be a better way to do this than
   # with three nested for loops
-  for(statList in ds$Affects){
-    for(s in statList){
+  for(tagList in ds$Tags){
+    for(s in tagList){
       if (! (s %in% choices) ){
         choices <- c(choices, s)
       }
@@ -24,14 +21,4 @@ getAffectedStatChoices <- function(ds){
   }
   choices <- sort(choices)
   return(choices)
-}
-
-getStatIntersect <- function(statEntry, statList){
-  print("ENTRY")
-  print(unlist(statEntry))
-  print(statList)
-  z <- intersect(statEntry, statList)
-  print("MATCHING")
-  print(z)
-  return(length(z))
 }
