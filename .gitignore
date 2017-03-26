@@ -4,4 +4,5 @@ Dockerfile.local
 .system-libraries.txt
 .Rproj.user
 .Rhistory
+.RData
 .gh-packages.txt

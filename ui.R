@@ -4,6 +4,7 @@ source("helpers.R")
 ds = read.csv('data/test-data.csv', na.strings=c(""), header=TRUE, stringsAsFactors=FALSE)
 ds[is.na(ds)] <- 'None'
 ds$Tags <- strsplit(ds$Tags, "/")
+ds$Subject <- strsplit(ds$Subject, "/")
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(
   

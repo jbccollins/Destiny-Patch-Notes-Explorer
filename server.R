@@ -10,6 +10,7 @@ library(data.table)
 ds = read.csv('data/test-data.csv', na.strings=c(""), header=TRUE, stringsAsFactors=FALSE)
 ds[is.na(ds)] <- 'None'
 ds$Tags <- strsplit(ds$Tags, "/")
+ds$Subject <- strsplit(ds$Subject, "/")
 
 shinyServer(function(input, output) {
   
@@ -32,11 +33,12 @@ shinyServer(function(input, output) {
     x <- x %>% select (colNums)
     x <- x %>% filter(
       Environment %in% environment,
-      Result %in% results,
-      Subject %in% subject
+      Result %in% results
     )
-    idx <- which(sapply(x$Tags, function(y) length(intersect(tags, y))) > 0)
-    x <- x[idx,]
+    tag_idx <- which(sapply(x$Tags, function(y) length(intersect(tags, y))) > 0)
+    x <- x[tag_idx,]
+    subject_index <- which(sapply(x$Subject, function(y) length(intersect(subject, y))) > 0)
+    x <- x[subject_index,]
     numBuffs = sum(x$Result == "Buff")
     numNerfs = sum(x$Result == "Nerf")
     numNeutral = sum(x$Result == "Neutral")
@@ -90,25 +92,27 @@ shinyServer(function(input, output) {
     dt_result$Difference <- dt_result$Buffs + dt_result$Nerfs;
     dt_result$Trend <- cumsum(dt_result$Difference)
         
-    min_val <- min(with(dt_result, pmin(Nerfs, Buffs, Difference)))
-    max_val <- max(with(dt_result, pmax(Nerfs, Buffs, Difference)))
-    min_val <- -25
-    max_val <- 25
-    #op <- par(mar = c(10,0,0,0))
+    min_val <- min(with(dt_result, pmin(Nerfs, Buffs, Trend)))
+    max_val <- max(with(dt_result, pmax(Nerfs, Buffs, Trend)))
+
+    op <- par(mar=c(7,4,1,1))
     plot(dt_result$Buffs,type="h",ylim=c(min_val,max_val),col="green4",ylab="Number",lend=1,lwd=20,xlab="",xaxt="n")
-    #par(op)
     lines(dt_result$Nerfs,type="h",col="red4",lend=1,lwd=20)
     grid()
     lines(dt_result$Trend,type="l",col="hotpink",lwd=4,lty=1)
-    points(dt_result$Difference,col="gold",pch=18,cex=1,lwd=4)
-    #legend("topright",legend=c("Buffs", "Nerfs", "Difference", "Trend"),col=c("green4", "red4", "gold", "hotpink"),bg="white",lwd=2)
-    axis(1,at=c(1:nrow(dt_result)),labels=dt_result$Version,las=2)
+    #points(dt_result$Difference,col="yellow",pch=18,cex=1,lwd=4)
+    legend("bottomleft",legend=c("Buffs", "Nerfs", "Trend"),col=c("green4", "red4", "hotpink"),bg="white",lwd=10)
+    axis(1, at=c(1:nrow(dt_result)), labels=FALSE)
+    text(x=c(1:nrow(dt_result)) + 0.2, y=par()$usr[3]-0.05*(par()$usr[4]-par()$usr[3]),
+         labels=dt_result$Version, srt=45, adj=1, xpd=TRUE, cex=0.8)
+    par(op)
+    dev.off()
   })
   
   output$downloadDataTable <- downloadHandler(
     filename = function() { paste('datatable', '.csv', sep='') },
     content = function(file) {
-      write.csv(data_filter(), file)
+      write.csv(apply(data_filter(),2,as.character), file)
     }
   )
 })
