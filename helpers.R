@@ -33,3 +33,7 @@ getTagChoices <- function(ds){
   choices <- sort(choices)
   return(choices)
 }
+
+joinChoices <- function(column) {
+  lapply(column, function(v){paste(v, collapse = '/')})
+}

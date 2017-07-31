@@ -7,13 +7,13 @@ ds$Tags <- strsplit(ds$Tags, "/")
 ds$Subject <- strsplit(ds$Subject, "/")
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(
-  
+  includeCSS("www/app.css"),
   # Application title
-  titlePanel("Patch Notes Explorer"),
+  titlePanel("Destiny Patch Notes Explorer"),
   
   # Sidebar with a slider input for the number of bins
   sidebarLayout(
-    sidebarPanel(width = 3,
+    sidebarPanel(width = 3, class = "sidebar-panel",
       tags$head(
         tags$style("
           form.well {background-color: white; }
@@ -67,6 +67,8 @@ shinyUI(fluidPage(
     )),
     # Show a plot of the generated distribution
     mainPanel(
+      width = 9,
+      class = "main-panel",
       fluidRow(
         column(3,
                tags$div(
@@ -106,6 +108,16 @@ shinyUI(fluidPage(
                         </h3>
                         ")
                   )
+        )
+      ),
+      fluidRow(
+        column(12,
+               tags$div(
+                 class = "patch-version-slider-container",
+                 sliderInput("versionSlider", "Patch Version:",
+                             width = '100%',
+                             min = 1, max = 48, value = c(1,48))
+               )
         )
       ),
       textOutput("text1")

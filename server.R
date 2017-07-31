@@ -5,20 +5,22 @@ source("helpers.R")
 library(ggplot2)
 library(data.table)
 
-
+shinyOptions(autoreload = TRUE)
 # DataSet
 ds = read.csv('data/test-data.csv', na.strings=c(""), header=TRUE, stringsAsFactors=FALSE)
 ds[is.na(ds)] <- 'None'
 ds$Tags <- strsplit(ds$Tags, "/")
 ds$Subject <- strsplit(ds$Subject, "/")
+versions = unique(ds$Version)
 
-shinyServer(function(input, output) {
+shinyServer(function(input, output, session) {
   
   data_filter <- function(){
     environment = input$environment
     results = input$results
     subject = input$subject
     tags = input$tags
+    versionMinMax <- input$versionSlider
     includeExotics = input$tableIncludeExotics
     x <- ds
     toSelect = c("Version", "Subject", "Environment", "Tags", "Result", "Detail")
@@ -33,7 +35,8 @@ shinyServer(function(input, output) {
     x <- x %>% select (colNums)
     x <- x %>% filter(
       Environment %in% environment,
-      Result %in% results
+      Result %in% results,
+      Version %in% versions[versionMinMax[1]:versionMinMax[2]]
     )
     tag_idx <- which(sapply(x$Tags, function(y) length(intersect(tags, y))) > 0)
     x <- x[tag_idx,]
@@ -55,6 +58,7 @@ shinyServer(function(input, output) {
     output$unknown <- renderText({
       paste(c(numUnknown, "Unknown"), collapse = " ")
     })
+    head(x)
     return (x)
   }
   
@@ -106,13 +110,15 @@ shinyServer(function(input, output) {
     text(x=c(1:nrow(dt_result)) + 0.2, y=par()$usr[3]-0.05*(par()$usr[4]-par()$usr[3]),
          labels=dt_result$Version, srt=45, adj=1, xpd=TRUE, cex=0.8)
     par(op)
-    dev.off()
   })
   
   output$downloadDataTable <- downloadHandler(
     filename = function() { paste('datatable', '.csv', sep='') },
     content = function(file) {
-      write.csv(apply(data_filter(),2,as.character), file)
+      x <- data_filter()
+      x$Tags <- joinChoices(x$Tags)
+      x$Subject <- joinChoices(x$Subject)
+      write.csv(apply(x,2,as.character), file)
     }
   )
 })
